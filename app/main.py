@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from .scanner import scan_directory
 from .github_scanner import scan_github
+from .advisor import ExplainRequest, explain
 
 app = FastAPI(title="NEXUS AI LAB", version="0.1.0")
 STATIC = Path(__file__).parent / "static"
@@ -19,6 +20,10 @@ class GitHubScanRequest(BaseModel):
 @app.post("/api/scan/github")
 def scan_public_github(request: GitHubScanRequest):
     return scan_github(request.repository)
+
+@app.post("/api/explain")
+def explain_finding(request: ExplainRequest):
+    return explain(request.rule)
 
 @app.get("/")
 def home():
