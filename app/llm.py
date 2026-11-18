@@ -1,5 +1,6 @@
 """Optional generative review: administrator-only and disabled by default."""
 import json
+import secrets
 import os
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -17,7 +18,7 @@ def ai_enabled():
 def review_with_model(data: AIRequest, admin_token: str | None):
     if not ai_enabled():
         raise HTTPException(503, "IA generativa desactivada: configurar variables privadas en Render")
-    if not admin_token or admin_token != os.environ["NEXUS_ADMIN_TOKEN"]:
+    if not admin_token or not secrets.compare_digest(admin_token, os.environ["NEXUS_ADMIN_TOKEN"]):
         raise HTTPException(403, "Acceso restringido")
     # Only validated, structured findings are sent; never send source files or secrets.
     allowed = {"rule", "severity", "file", "line"}
