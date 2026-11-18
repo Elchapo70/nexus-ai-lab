@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXUS AI LAB</title>
+<style>body{font-family:system-ui;background:#0b1220;color:#e5eefc;margin:0;padding:36px}main{max-width:900px;margin:auto}section{background:#172338;border:1px solid #32435e;border-radius:16px;padding:24px;margin-top:20px}button,select{padding:12px;border-radius:8px;margin:5px}button{background:#48b7f2;border:0;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#9eb3cf}</style></head>
+<body><main><h1>NEXUS AI LAB</h1><p>Analizador estático local de seguridad · v0.1.0</p><section><h2>Analizar proyecto</h2><select id="projects"></select><button id="scan">Analizar</button><button id="download">Descargar JSON</button><p id="status"></p><pre id="result"></pre></section><small>Solo analiza proyectos autorizados. No ejecuta ni modifica código.</small></main>
+<script>
+let report=null;const select=document.querySelector("#projects"),status=document.querySelector("#status"),output=document.querySelector("#result");
+fetch("/api/projects").then(r=>r.json()).then(data=>{select.innerHTML="";for(const name of data.projects){const o=document.createElement("option");o.value=name;o.textContent=name;select.append(o)}if(!data.projects.length)status.textContent="No hay proyectos configurados."}).catch(()=>status.textContent="No se pudieron cargar proyectos.");
+document.querySelector("#scan").onclick=async()=>{status.textContent="Analizando...";try{const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:select.value})});report=await r.json();if(!r.ok)throw Error(report.detail||"Error");output.textContent=JSON.stringify(report,null,2);status.textContent="Análisis finalizado."}catch(e){status.textContent=e.message}};
+document.querySelector("#download").onclick=()=>{if(!report)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="nexus-report.json";a.click();URL.revokeObjectURL(url)};
+</script></body></html>
