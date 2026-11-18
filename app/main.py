@@ -5,12 +5,20 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from .scanner import scan_directory
+from .github_scanner import scan_github
 
 app = FastAPI(title="NEXUS AI LAB", version="0.1.0")
 STATIC = Path(__file__).parent / "static"
 
 class ScanRequest(BaseModel):
     project: str = Field(min_length=1, max_length=120, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+
+class GitHubScanRequest(BaseModel):
+    repository: str = Field(min_length=3, max_length=250)
+
+@app.post("/api/scan/github")
+def scan_public_github(request: GitHubScanRequest):
+    return scan_github(request.repository)
 
 @app.get("/")
 def home():
