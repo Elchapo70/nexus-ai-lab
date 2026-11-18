@@ -1,14 +1,16 @@
 """Local-only, read-only security scanner API."""
 import os
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from .scanner import scan_directory
 from .github_scanner import scan_github
 from .advisor import ExplainRequest, explain
+from .agents import AgentRequest, run_agents
+from .llm import AIRequest, ai_enabled, review_with_model
 
-app = FastAPI(title="NEXUS AI LAB", version="0.1.0")
+app = FastAPI(title="NEXUS AI LAB", version="0.3.0")
 STATIC = Path(__file__).parent / "static"
 
 class ScanRequest(BaseModel):
@@ -25,13 +27,26 @@ def scan_public_github(request: GitHubScanRequest):
 def explain_finding(request: ExplainRequest):
     return explain(request.rule)
 
+@app.post("/api/agents/review")
+def agent_review(request: AgentRequest):
+    return run_agents(request)
+
+@app.get("/api/agents/status")
+def agent_status():
+    return {"agents": ["Triage Agent", "Remediation Agent", "Quality Agent"],
+            "mode": "deterministic", "generative_ai_enabled": ai_enabled()}
+
+@app.post("/api/agents/ai-review")
+def generative_review(request: AIRequest, x_nexus_admin_token: str | None = Header(default=None)):
+    return review_with_model(request, x_nexus_admin_token)
+
 @app.get("/")
 def home():
     return FileResponse(STATIC / "index.html")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "0.3.0"}
 
 @app.get("/api/projects")
 def projects():
