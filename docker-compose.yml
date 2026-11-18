@@ -1,0 +1,14 @@
+services:
+  nexus:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      NEXUS_PROJECTS_DIR: /projects
+    volumes:
+      - ./examples:/projects:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
