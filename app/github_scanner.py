@@ -1,6 +1,7 @@
 """Read-only scan of small public GitHub repositories via official API."""
 import base64
 import json
+import os
 import re
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -8,11 +9,15 @@ from fastapi import HTTPException
 from .scanner import RULES, EXTENSIONS
 
 REPO_RE = re.compile(r"^(?:https://github\.com/)?([A-Za-z0-9-]{1,39})/([A-Za-z0-9_.-]{1,100})(?:\.git)?/?$")
-MAX_FILES = 30
+MAX_FILES = 15
 MAX_BYTES = 120_000
 
 def github_json(path):
-    req = Request("https://api.github.com/" + path, headers={"Accept": "application/vnd.github+json", "User-Agent": "NexusAILab/0.2"})
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "NexusAILab/0.3"}
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = Request("https://api.github.com/" + path, headers=headers)
     try:
         with urlopen(req, timeout=12) as response:
             return json.load(response)
@@ -20,7 +25,12 @@ def github_json(path):
         if error.code == 404:
             raise HTTPException(404, "Repositorio público no encontrado") from error
         if error.code in (403, 429):
-            raise HTTPException(429, "Límite de GitHub alcanzado; intenta más tarde") from error
+            remaining = error.headers.get("X-RateLimit-Remaining")
+            if error.code == 429 or remaining == "0":
+                raise HTTPException(429, "Se agotó el límite de GitHub. Configura GITHUB_TOKEN en Render o espera al reinicio del límite.") from error
+            raise HTTPException(403, "GitHub rechazó el acceso. Comprueba los permisos y el token del servidor.") from error
+        if error.code == 401:
+            raise HTTPException(502, "El token de GitHub del servidor no es válido.") from error
         raise HTTPException(502, "Error de la API de GitHub") from error
     except (URLError, TimeoutError, ValueError) as error:
         raise HTTPException(502, "GitHub no está disponible") from error
